@@ -1,5 +1,6 @@
 #include "Arduino.h"
 #include "rom.h"
+#include "programs.h"
 
 #define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
 
@@ -7,7 +8,9 @@ const int SERIAL_SPEED = 115200; // Arduino Serial Speed
 
 const int CLOCK_PIN   = 52; // TO 6502 CLOCK
 const int RW_PIN      = 53; // TO 6502 R/W
-const int CLOCK_DELAY = 1; // HIGH / LOW CLOCK STATE DELAY
+const int CLOCK_DELAY = 5; // HIGH / LOW CLOCK STATE DELAY
+
+const char SERIAL_BS = 0x08;
 
 const int NUM_ADDR_PINS   = 16;
 const int NUM_DATA_PINS   = 8;
@@ -135,6 +138,9 @@ void readFromDataBus() {
             // Simulate CR
             Serial.write('\r');
             Serial.write('\n');
+          } else if (DSP == BS) {
+            // BACKSPACE
+            Serial.write(SERIAL_BS);
           } else {
             Serial.write(DSP & 0x7F);
           }
@@ -196,7 +202,6 @@ void handleKeyboard() {
   // KEYBOARD INPUT
   if (Serial.available() > 0) {
     char tempKBD = Serial.read();
-
     switch (tempKBD) {
       case 0xA:
         // Not expected from KEYB
@@ -207,6 +212,12 @@ void handleKeyboard() {
         // CR
         tempKBD = 0x0D;
         break;
+      case 0x8:
+      case 0x7F:
+        // BS
+        tempKBD = 0x5F;
+        break;
+
     }
 
     KBD = tempKBD;
@@ -217,13 +228,23 @@ void handleKeyboard() {
   }
 }
 
+void autload() {
+
+  unsigned int adddr = AUTLOAD[1] | AUTLOAD[0] << 8;
+  Serial.print("AUTOLOAD AT: ");
+  Serial.println(adddr, HEX);
+
+  for (unsigned int i = 0; i <= sizeof(AUTLOAD)-2 ; i++) {
+    RAM_BANK_1[adddr+i] = AUTLOAD[i+2];
+  }
+}
+
 void setup() {
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(RW_PIN, INPUT);
   setupAddressPins();
   busMode(OUTPUT);
   Serial.begin(SERIAL_SPEED);
-
   Serial.println("----------------------------");
   Serial.println("APPLE 1 REPLICA by =STID=");
   Serial.println("----------------------------");
@@ -236,6 +257,7 @@ void setup() {
   Serial.print("ERAM: ");
   Serial.print(sizeof(RAM_BANK_2));
   Serial.println(" BYTE");
+  autload();
   Serial.println("----------------------------");
 
 }
