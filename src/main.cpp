@@ -8,7 +8,7 @@ const int SERIAL_SPEED = 115200; // Arduino Serial Speed
 
 const int CLOCK_PIN   = 52; // TO 6502 CLOCK
 const int RW_PIN      = 53; // TO 6502 R/W
-const int CLOCK_DELAY = 5; // HIGH / LOW CLOCK STATE DELAY
+const int CLOCK_DELAY = 4;  // HIGH / LOW CLOCK STATE DELAY
 
 const char SERIAL_BS = 0x08;
 
@@ -21,21 +21,21 @@ const unsigned int ROM_ADDR       = 0xFF00; // ROM
 const unsigned int RAM_BANK1_ADDR = 0x0000; // RAM
 const unsigned int RAM_BANK2_ADDR = 0xE000; // EXTENDED RAM
 
-const unsigned int XAML = 0x24; // Last "opened" location Low
-const unsigned int XAMH = 0x25; // Last "opened" location High
-const unsigned int STL  = 0x26; // Store address Low
-const unsigned int STH  = 0x27; // Store address High
-const unsigned int L    = 0x28; // Hex value parsing Low
-const unsigned int H    = 0x29; // Hex value parsing High
-const unsigned int YSAV = 0x2A; // Used to see if hex value is given
-const unsigned int MODE = 0x2B; // $00=XAM, $7F=STOR, $AE=BLOCK XAM
+const unsigned int XAML = 0x24;   // Last "opened" location Low
+const unsigned int XAMH = 0x25;   // Last "opened" location High
+const unsigned int STL  = 0x26;   // Store address Low
+const unsigned int STH  = 0x27;   // Store address High
+const unsigned int L    = 0x28;   // Hex value parsing Low
+const unsigned int H    = 0x29;   // Hex value parsing High
+const unsigned int YSAV = 0x2A;   // Used to see if hex value is given
+const unsigned int MODE = 0x2B;   // $00=XAM, $7F=STOR, $AE=BLOCK XAM
 const unsigned int IN   = 0x200;  // Input buffer ($0200,$027F)
 
 const int RAM_BANK_1_SIZE = 4096;
 const int RAM_BANK_2_SIZE = 4096;
 unsigned char RAM_BANK_1[RAM_BANK_1_SIZE];
 
-// PIA  MAPPING 6821
+// PIA MAPPING 6821
 const unsigned int PIA_ADDR   = 0xD000; // PIA 6821 ADDR BASE SPACE
 const unsigned int KBD_ADDR   = 0xD010; // Keyb Char - B7 High on keypress
 const unsigned int KBDCR_ADDR = 0xD011; // Keyb Status - B7 High on keypress / Low when ready
@@ -50,14 +50,13 @@ const unsigned char BS      = 0xDF;  // Backspace key, arrow left key (B7 High)
 const unsigned char CR      = 0x8D;  // Carriage Return (B7 High)
 const unsigned char ESC     = 0x9B;  // ESC key (B7 High)
 
-unsigned int  address;      // Current address (from 6502)
+unsigned int  address;    // Current address (from 6502)
 unsigned char bus_data;   // Data Bus value (from 6502)
-int rw_state;        // Current R/W state (from 6502)
+int rw_state;             // Current R/W state (from 6502)
 
-
-unsigned int  pre_address;      // Current address (from 6502)
+unsigned int  pre_address;    // Current address (from 6502)
 unsigned char pre_bus_data;   // Data Bus value (from 6502)
-int pre_rw_state;        // Current R/W state (from 6502)
+int pre_rw_state;             // Current R/W state (from 6502)
 
 
 void setupAddressPins() {
@@ -66,7 +65,7 @@ void setupAddressPins() {
   }
 }
 
-void busMode(int mode) {
+void setBusMode(int mode) {
   for (int i = 0; i < NUM_DATA_PINS; ++i) {
     pinMode(DATA_PINS[i], mode);
   }
@@ -91,15 +90,16 @@ void readData() {
 }
 
 void handleRWState() {
-  int curent_rw_state=digitalRead(RW_PIN);
-  if (rw_state != curent_rw_state) {
-    rw_state=curent_rw_state;
+  int tmp_rw_state=digitalRead(RW_PIN);
+
+  if (rw_state != tmp_rw_state) {
+    rw_state=tmp_rw_state;
     if (rw_state) {
       // State HIGH - WRITE TO 6502 Data Bus
-      busMode(OUTPUT);
+      setBusMode(OUTPUT);
     } else {
       // State LOW - READ FROM 6502 Data Bus
-      busMode(INPUT);
+      setBusMode(INPUT);
     }
   }
 }
@@ -108,6 +108,42 @@ void handleRWState() {
 void byteToDataBus(unsigned char data) {
   for (int i = 0; i < NUM_DATA_PINS; i++) {
     digitalWrite(DATA_PINS[i], CHECK_BIT(data, i));
+  }
+}
+
+void PIAWrite() {
+  switch (address) {
+
+    case KBD_ADDR:
+      KBD=bus_data;
+      break;
+
+    case KBDCR_ADDR:
+      KBDCR=bus_data;
+      break;
+
+    case DSP_ADDR:
+      DSP = bus_data;
+
+      switch(DSP) {
+        case CR:
+          Serial.write('\r');
+          Serial.write('\n');
+          break;
+        case BS:
+          Serial.write(SERIAL_BS);
+          break;
+        default:
+          Serial.write(DSP & 0x7F);
+          break;
+      }
+
+      bitClear(DSP, 7);
+      break;
+
+    case DSPCR_ADDR:
+      DSPCR=bus_data;
+      break;
   }
 }
 
@@ -124,35 +160,38 @@ void readFromDataBus() {
       RAM_BANK_2[address-RAM_BANK2_ADDR]=bus_data;
       break;
     case 0xD:
-      // 6821
-      switch (address) {
-        case KBD_ADDR:
-          KBD=bus_data;
-          break;
-        case KBDCR_ADDR:
-          KBDCR=bus_data;
-          break;
-        case DSP_ADDR:
-          DSP = bus_data;
-          if (DSP == CR) {
-            // Simulate CR
-            Serial.write('\r');
-            Serial.write('\n');
-          } else if (DSP == BS) {
-            // BACKSPACE
-            Serial.write(SERIAL_BS);
-          } else {
-            Serial.write(DSP & 0x7F);
-          }
-          // Display Ready - clear B7
-          bitClear(DSP, 7);
-          break;
-        case DSPCR_ADDR:
-          DSPCR=bus_data;
-          break;
-      }
+      PIAWrite();
       break;
   }
+}
+
+unsigned char PIARead() {
+  unsigned char val;
+  // PIA 6821
+  switch (address) {
+
+    case KBD_ADDR:
+      val=KBD;
+      // We'v read the char, clear B7
+      bitClear(KBDCR, 7);
+      break;
+
+    case KBDCR_ADDR:
+      val=KBDCR;
+      break;
+
+    case DSP_ADDR:
+      val=DSP;
+      break;
+
+    case DSPCR_ADDR:
+      val=DSPCR;
+      break;
+    default:
+      val=0;
+  }
+
+  return val;
 }
 
 // WRITE FROM DATA BUS A BYTE FROM RELATED ADDRESS
@@ -170,25 +209,7 @@ void writeToDataBus() {
       val=ROM[address-ROM_ADDR];
       break;
     case 0xD:
-      // PIA 6821
-      switch (address) {
-        case KBD_ADDR:
-          val=KBD;
-          // We'v read the char, clear B7
-          bitClear(KBDCR, 7);
-          break;
-        case KBDCR_ADDR:
-          val=KBDCR;
-          break;
-        case DSP_ADDR:
-          val=DSP;
-          break;
-        case DSPCR_ADDR:
-          val=DSPCR;
-          break;
-        default:
-          val=0;
-      }
+      val=PIARead();
       break;
     default:
       val=0;
@@ -217,19 +238,16 @@ void handleKeyboard() {
         // BS
         tempKBD = 0x5F;
         break;
-
     }
 
     KBD = tempKBD;
 
-    // Step B7 on KBD so that the code know a new char is in
     bitSet(KBD, 7);
     bitSet(KBDCR, 7);
   }
 }
 
 void autload() {
-
   unsigned int adddr = AUTLOAD[1] | AUTLOAD[0] << 8;
   Serial.print("AUTOLOAD AT: ");
   Serial.println(adddr, HEX);
@@ -242,9 +260,12 @@ void autload() {
 void setup() {
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(RW_PIN, INPUT);
+
   setupAddressPins();
-  busMode(OUTPUT);
+  setBusMode(OUTPUT);
+
   Serial.begin(SERIAL_SPEED);
+
   Serial.println("----------------------------");
   Serial.println("APPLE 1 REPLICA by =STID=");
   Serial.println("----------------------------");
@@ -257,12 +278,14 @@ void setup() {
   Serial.print("ERAM: ");
   Serial.print(sizeof(RAM_BANK_2));
   Serial.println(" BYTE");
+
   autload();
+
   Serial.println("----------------------------");
 
 }
 
-void loop () {
+void handleClock() {
   // LOW CLOCK
   digitalWrite(CLOCK_PIN, LOW);
   delayMicroseconds(CLOCK_DELAY);
@@ -273,24 +296,20 @@ void loop () {
   // HIGH CLOCK
   digitalWrite(CLOCK_PIN, HIGH);
   delayMicroseconds(CLOCK_DELAY);
+}
 
-  // ALWAYS READ ADDR
-  readAddress();
-
+void handleBusRW() {
   // READ OR WRITE TO BUS?
-
   if (pre_address != address || pre_rw_state != rw_state) {
     rw_state ? writeToDataBus() : readFromDataBus();
-  } else {
     pre_address = address;
     pre_rw_state = rw_state;
   }
-
-  handleKeyboard();
 }
 
-// WOZ TEST (As on the Apple 1 Manual)
-// 0:A9 9 AA 20 EF FF E8 8A 4C 2 0
-
-// HELLO WORLD
-// 280:A2 C BD 8B 2 20 EF FF CA D0 F7 60 8D C4 CC D2 CF D7 A0 CF CC CC C5 C8
+void loop () {
+  handleClock();
+  readAddress();
+  handleBusRW();
+  handleKeyboard();
+}

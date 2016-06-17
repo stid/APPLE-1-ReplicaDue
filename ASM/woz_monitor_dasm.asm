@@ -5,28 +5,28 @@
 ;
 ;-------------------------------------------------------------------------
 
-                processor   6502
-                org	$FF00
+                processor       6502
+                org             $FF00
 
 ;-------------------------------------------------------------------------
 ;  Memory declaration
 ;-------------------------------------------------------------------------
 
-XAML            .EQ     $24             Last "opened" location Low
-XAMH            .EQ     $25             Last "opened" location High
-STL             .EQ     $26             Store address Low
-STH             .EQ     $27             Store address High
-L               .EQ     $28             Hex value parsing Low
-H               .EQ     $29             Hex value parsing High
-YSAV            .EQ     $2A             Used to see if hex value is given
-MODE            .EQ     $2B             $00=XAM, $7F=STOR, $AE=BLOCK XAM
+XAML            equ     $24             ;Last "opened" location Low
+XAMH            equ     $25             ;Last "opened" location High
+STL             equ     $26             ;Store address Low
+STH             equ     $27             ;Store address High
+L               equ     $28             ;Hex value parsing Low
+H               equ     $29             ;Hex value parsing High
+YSAV            equ     $2A             ;Used to see if hex value is given
+MODE            equ     $2B             ;$00=XAM, $7F=STOR, $AE=BLOCK XAM
 
-IN              .EQ     $0200,$027F     Input buffer
+IN              equ     $0200,$027F     ;Input buffer
 
-KBD             .EQ     $D010           PIA.A keyboard input
-KBDCR           .EQ     $D011           PIA.A keyboard control register
-DSP             .EQ     $D012           PIA.B display output register
-DSPCR           .EQ     $D013           PIA.B display control register
+KBD             equ     $D010           ;PIA.A keyboard input
+KBDCR           equ     $D011           ;PIA.A keyboard control register
+DSP             equ     $D012           ;PIA.B display output register
+DSPCR           equ     $D013           ;PIA.B display control register
 
 ; KBD b7..b0 are inputs, b6..b0 is ASCII input, b7 is constant high
 ;     Programmed to respond to low to high KBD strobe
@@ -39,10 +39,10 @@ DSPCR           .EQ     $D013           PIA.B display control register
 ;  Constants
 ;-------------------------------------------------------------------------
 
-BS              .EQ     $DF             Backspace key, arrow left key
-CR              .EQ     $8D             Carriage Return
-ESC             .EQ     $9B             ESC key
-PROMPT          .EQ     "\"             Prompt character
+BS              equ     $DF             ;Backspace key, arrow left key
+CR              equ     $8D             ;Carriage Return
+ESC             equ     $9B             ;ESC key
+PROMPT          equ     "\\"             ;Prompt character
 
 ;-------------------------------------------------------------------------
 ;  Let's get started
@@ -52,13 +52,13 @@ PROMPT          .EQ     "\"             Prompt character
 ;  are selected.
 ;-------------------------------------------------------------------------
 
-RESET           CLD                     Clear decimal arithmetic mode
+RESET           CLD                     ;Clear decimal arithmetic mode
                 CLI
-                LDY     #%0111.1111     Mask for DSP data direction reg
-                STY     DSP              (DDR mode is assumed after reset)
-                LDA     #%1010.0111     KBD and DSP control register mask
-                STA     KBDCR           Enable interrupts, set CA1, CB1 for
-                STA     DSPCR            positive edge sense/output mode.
+                LDY     #%0111.1111     ;Mask for DSP data direction reg
+                STY     DSP             ; (DDR mode is assumed after reset)
+                LDA     #%1010.0111     ;KBD and DSP control register mask
+                STA     KBDCR           ;Enable interrupts, set CA1, CB1 for
+                STA     DSPCR           ; positive edge sense/output mode.
 
 ; Program falls through to the GETLINE routine to save some program bytes
 ; Please note that Y still holds $7F, which will cause an automatic Escape
@@ -67,36 +67,36 @@ RESET           CLD                     Clear decimal arithmetic mode
 ; The GETLINE process
 ;-------------------------------------------------------------------------
 
-NOTCR           CMP     #BS             Backspace key?
-                BEQ     BACKSPACE       Yes
-                CMP     #ESC            ESC?
-                BEQ     ESCAPE          Yes
-                INY                     Advance text index
-                BPL     NEXTCHAR        Auto ESC if line longer than 127
+NOTCR           CMP     #BS             ;Backspace key?
+                BEQ     BACKSPACE       ;Yes
+                CMP     #ESC            ;ESC?
+                BEQ     ESCAPE          ;Yes
+                INY                     ;Advance text index
+                BPL     NEXTCHAR        ;Auto ESC if line longer than 127
 
-ESCAPE          LDA     #PROMPT         Print prompt character
-                JSR     ECHO            Output it.
+ESCAPE          LDA     #PROMPT         ;Print prompt character
+                JSR     ECHO            ;Output it.
 
-GETLINE         LDA     #CR             Send CR
+GETLINE         LDA     #CR             ;Send CR
                 JSR     ECHO
 
-                LDY     #0+1            Start a new input line
-BACKSPACE       DEY                     Backup text index
-                BMI     GETLINE         Oops, line's empty, reinitialize
+                LDY     #0+1            ;Start a new input line
+BACKSPACE       DEY                     ;Backup text index
+                BMI     GETLINE         ;Oops, line's empty, reinitialize
 
-NEXTCHAR        LDA     KBDCR           Wait for key press
-                BPL     NEXTCHAR        No key yet!
-                LDA     KBD             Load character. B7 should be '1'
-                STA     IN,Y            Add to text buffer
-                JSR     ECHO            Display character
+NEXTCHAR        LDA     KBDCR           ;Wait for key press
+                BPL     NEXTCHAR        ;No key yet!
+                LDA     KBD             ;Load character. B7 should be '1'
+                STA     IN,Y            ;Add to text buffer
+                JSR     ECHO            ;Display character
                 CMP     #CR
-                BNE     NOTCR           It's not CR!
+                BNE     NOTCR           ;It's not CR!
 
 ; Line received, now let's parse it
 
-                LDY     #-1             Reset text index
-                LDA     #0              Default mode is XAM
-                TAX                     X=0
+                LDY     #-1             ;Reset text index
+                LDA     #0              ;Default mode is XAM
+                TAX                     ;X=0
 
 SETSTOR         ASL                     Leaves $7B if setting STOR mode
 
