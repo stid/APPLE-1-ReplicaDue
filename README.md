@@ -67,12 +67,12 @@ Inside ASM folder you can find the woz_monitor_masm.asm source listing. This is 
 If you are under OSX - you can install MASM via homebrew and use it to compile any asm source included the one above.
 
 ## Apple 1 Address space
-$0000-$0FFF ------------- 4KB RAM
-   $0024-$002B ---------- WOZ MONITOR STORE (better to not overwrite)
-   $0200-$027F ---------- INPUT BUFFER (as the one above)
-$D010-$D013 ------------- PIA (6821) [KBD & DSP]
-$E000-$EFFF ------------- 4KB extended RAM (Usually for BASIC prog)
-$FF00-$FFFF ------------- 256 Bytes ROM (crazy! with just 2 bytes unused.)
+   $0000-$0FFF ------------- 4KB RAM
+      $0024-$002B ---------- WOZ MONITOR STORE (better to not overwrite)
+      $0200-$027F ---------- INPUT BUFFER (as the one above)
+   $D010-$D013 ------------- PIA (6821) [KBD & DSP]
+   $E000-$EFFF ------------- 4KB extended RAM (Usually for BASIC prog)
+   $FF00-$FFFF ------------- 256 Bytes ROM (crazy! with just 2 bytes unused.)
 
 
 ## Resources
