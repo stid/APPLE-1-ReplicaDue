@@ -12,8 +12,6 @@ const int CLOCK_DELAY = 4;  // HIGH / LOW CLOCK STATE DELAY
 
 const char SERIAL_BS = 0x08;
 
-const int NUM_ADDR_PINS   = 16;
-const int NUM_DATA_PINS   = 8;
 const int ADDRESS_PINS[]  = {44,45,2,3,4,5,6,7,8,9,10,11,12,13,46,47}; // TO ADDRESS PIN 1-15 6502
 const int DATA_PINS[]     = {30,31,32,33,34,35,36,37}; // TO DATA BUS PIN 0-7 6502
 
@@ -34,6 +32,7 @@ const unsigned int IN   = 0x200;  // Input buffer ($0200,$027F)
 const int RAM_BANK_1_SIZE = 4096;
 const int RAM_BANK_2_SIZE = 4096;
 unsigned char RAM_BANK_1[RAM_BANK_1_SIZE];
+unsigned char RAM_BANK_2[RAM_BANK_2_SIZE];
 
 // PIA MAPPING 6821
 const unsigned int PIA_ADDR   = 0xD000; // PIA 6821 ADDR BASE SPACE
@@ -58,34 +57,33 @@ unsigned int  pre_address;    // Current address (from 6502)
 unsigned char pre_bus_data;   // Data Bus value (from 6502)
 int pre_rw_state;             // Current R/W state (from 6502)
 
-
 void setupAddressPins() {
-  for (int i = 0; i < NUM_ADDR_PINS; ++i) {
+  for (int i = 0; i < 16; ++i) {
     pinMode(ADDRESS_PINS[i], INPUT);
   }
 }
 
 void setBusMode(int mode) {
-  for (int i = 0; i < NUM_DATA_PINS; ++i) {
+  for (int i = 0; i < 8; ++i) {
     pinMode(DATA_PINS[i], mode);
   }
 }
 
 void readAddress() {
   address = 0;
-  for (int i = 0; i < NUM_ADDR_PINS; ++i)
+  for (int i = 0; i < 16; ++i)
   {
     address = address << 1;
-    address += (digitalRead(ADDRESS_PINS[NUM_ADDR_PINS-i-1]) == HIGH)?1:0;
+    address += (digitalRead(ADDRESS_PINS[16-i-1]) == HIGH)?1:0;
   }
 }
 
 void readData() {
   bus_data = 0;
-  for (int i = 0; i < NUM_DATA_PINS; ++i)
+  for (int i = 0; i < 8; ++i)
   {
     bus_data = bus_data << 1;
-    bus_data += (digitalRead(DATA_PINS[NUM_DATA_PINS-i-1]) == HIGH)?1:0;
+    bus_data += (digitalRead(DATA_PINS[8-i-1]) == HIGH)?1:0;
   }
 }
 
@@ -94,19 +92,13 @@ void handleRWState() {
 
   if (rw_state != tmp_rw_state) {
     rw_state=tmp_rw_state;
-    if (rw_state) {
-      // State HIGH - WRITE TO 6502 Data Bus
-      setBusMode(OUTPUT);
-    } else {
-      // State LOW - READ FROM 6502 Data Bus
-      setBusMode(INPUT);
-    }
+    rw_state ? setBusMode(OUTPUT) : setBusMode(INPUT);
   }
 }
 
 // Send a byte to the 6502 DATA BUS
 void byteToDataBus(unsigned char data) {
-  for (int i = 0; i < NUM_DATA_PINS; i++) {
+  for (int i = 0; i < 8; i++) {
     digitalWrite(DATA_PINS[i], CHECK_BIT(data, i));
   }
 }
@@ -156,7 +148,6 @@ void readFromDataBus() {
       RAM_BANK_1[address-RAM_BANK1_ADDR]=bus_data;
       break;
     case 0xE:
-      //RAM_BANK_2[address-RAM_BANK2_ADDR]=bus_data;
       RAM_BANK_2[address-RAM_BANK2_ADDR]=bus_data;
       break;
     case 0xD:
@@ -189,12 +180,12 @@ unsigned char PIARead() {
       break;
     default:
       val=0;
+      break;
   }
 
   return val;
 }
 
-// WRITE FROM DATA BUS A BYTE FROM RELATED ADDRESS
 void writeToDataBus() {
   unsigned char val=0;
 
@@ -215,7 +206,6 @@ void writeToDataBus() {
       val=0;
       break;
   }
-
   byteToDataBus(val);
 }
 
@@ -228,10 +218,6 @@ void handleKeyboard() {
         // Not expected from KEYB
         // Just ignore
         return;
-        break;
-      case 0xD:
-        // CR
-        tempKBD = 0x0D;
         break;
       case 0x8:
       case 0x7F:
@@ -247,13 +233,22 @@ void handleKeyboard() {
   }
 }
 
-void autload() {
-  unsigned int adddr = AUTLOAD[1] | AUTLOAD[0] << 8;
-  Serial.print("AUTOLOAD AT: ");
-  Serial.println(adddr, HEX);
+void loadBASIC() {
+  // LOAD BASIC in E000
+  Serial.println("BASIC LOADED");
+  for (unsigned int i = 0; i < sizeof(BASIC) ; i++) {
+    RAM_BANK_2[i] = BASIC[i];
+  }
+}
 
-  for (unsigned int i = 0; i <= sizeof(AUTLOAD)-2 ; i++) {
-    RAM_BANK_1[adddr+i] = AUTLOAD[i+2];
+void loadPROG() {
+  // LOAD A PROG
+  unsigned int prg_addr = AUTLOAD[1] | AUTLOAD[0] << 8;
+  Serial.print("PROGRAM AT: ");
+  Serial.println(prg_addr, HEX);
+
+  for (unsigned int i = 0; i < sizeof(AUTLOAD)-2 ; i++) {
+    RAM_BANK_1[prg_addr+i] = AUTLOAD[i+2];
   }
 }
 
@@ -279,10 +274,10 @@ void setup() {
   Serial.print(sizeof(RAM_BANK_2));
   Serial.println(" BYTE");
 
-  autload();
+  loadBASIC();
+  loadPROG();
 
   Serial.println("----------------------------");
-
 }
 
 void handleClock() {

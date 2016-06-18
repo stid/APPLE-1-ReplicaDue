@@ -3,7 +3,6 @@
 	; $FFFC and $FFFD - RESET PROGRAM COUNTER
 
 	processor   6502
-
 	org	$FF00
 
 loop
