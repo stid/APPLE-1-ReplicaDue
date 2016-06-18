@@ -8,7 +8,7 @@ const int SERIAL_SPEED = 115200; // Arduino Serial Speed
 
 const int CLOCK_PIN   = 52; // TO 6502 CLOCK
 const int RW_PIN      = 53; // TO 6502 R/W
-const int CLOCK_DELAY = 4;  // HIGH / LOW CLOCK STATE DELAY
+const int CLOCK_DELAY = 3;  // HIGH / LOW CLOCK STATE DELAY
 
 const char SERIAL_BS = 0x08;
 
