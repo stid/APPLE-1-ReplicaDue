@@ -13,7 +13,7 @@ const int CLOCK_DELAY = 3;  // HIGH / LOW CLOCK STATE DELAY (You can slow down i
 const char SERIAL_BS = 0x08;
 
 const int ADDRESS_PINS[]  = {44,45,2,3,4,5,6,7,8,9,10,11,12,13,46,47}; // TO ADDRESS PIN 1-15 6502
-const int DATA_PINS[]     = {30,31,32,33,34,35,36,37}; // TO DATA BUS PIN 0-7 6502
+const int DATA_PINS[]     = {33, 34, 35, 36, 37,38, 39, 40}; // TO DATA BUS PIN 0-7 6502
 
 const unsigned int ROM_ADDR       = 0xFF00; // ROM
 const unsigned int RAM_BANK1_ADDR = 0x0000; // RAM
@@ -235,10 +235,10 @@ void handleKeyboard() {
 
 void loadBASIC() {
   // LOAD BASIC in E000
-  Serial.println("BASIC LOADED");
   for (unsigned int i = 0; i < sizeof(BASIC) ; i++) {
     RAM_BANK_2[i] = BASIC[i];
   }
+  Serial.println("BASIC LOADED");
 }
 
 void loadPROG() {
