@@ -10,13 +10,13 @@ The project is build over Platformio (http://platformio.org/frameworks) but you 
 ## How it works
 A 65C02S (modern version of the original 6502) is wired on a breadboard. The 6502 is a very simple kind of CPU in terms of I/O and the modern version allow us to suspend the clock at any time in LOW / HIGH state.
 
-There are 16 Address Pins (A0-A15) each mapping a bit (HIGH/LOW) of an address word. This is how 6502 tell us what address he want to read or write to (RAM/ROM, IO dedicated address spaces). The state of this pins may change at every clock cycle.
+There are 16 Address Pins (A0-A15) each mapping a bit (HIGH/LOW) of an address word. This is how 6502 tell us which address he want to read or write to (RAM/ROM, IO dedicated address spaces). The state of this pins may change at every clock cycle.
 
 Other 8 pins will carry or expect the 1 Byte data to be stored or read to / from the address above.
 
 The CPU tell the external world if the data is in read or write state via R/W pin (HIGH=Expect data IN, LOW=Send data OUT).
 
-This is it. This is all you need to interact with a 6502. The CPU expect a clock signal (HIGH/LOW) on pin 37 (PHI2). The modern version of 6502 is able to suspend any activity for an unlimited period of time during a clock cycle, both in LOW or HIGH state (was a little bit more hard with the original CPU). This make a perfect fit to let us drive the CPU via something different from a crystal, in our case, an Arduino, debug any single clock cycle and keep things in sync.
+That's it. This is all you need to interact with a 6502. The CPU expect a clock signal (HIGH/LOW) on pin 37 (PHI2). The modern version of 6502 is able to suspend any activity for an unlimited period of time during a clock cycle, both in LOW or HIGH state (was a little bit more hard with the original CPU). This make a perfect fit to let us drive the CPU via something different from a crystal, in our case, an Arduino, debug any single clock cycle and keep things in sync.
 
 Knowing the address space where the Apple 1 was mapping the different IO  (Ram / ROM / KEYB / DSP), we can simulate the external interfaces (in fact a PIA 6821) and send back & forth as needed the related data via 6502 data bus. That's it.
 
@@ -53,7 +53,10 @@ The WOZ monitor asm source and the original apple 1 operation manual are two ver
                           +--------------+      |
                                                GND
 
+    CLOCK_DELAY: A0 - you should connect a potentiometer to A0, this will let you manually sed the clock delay of the 6502.
+
     Note: You may want to put a 100Uf capacitor near the 3.3v & GND lines too.
+
 
 ## Serial client recommended settings:
 You should be able to use the standard Serial Monitor in the Arduino IDE or or Platformio (Atom) or any other basic serial client.

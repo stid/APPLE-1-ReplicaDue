@@ -4,14 +4,16 @@
 
 #define CHECK_BIT(var,pos) ((var) & (1<<(pos)))
 
+// General Control settings
 const int SERIAL_SPEED = 115200; // Arduino Serial Speed
-
-const int CLOCK_PIN   = 52; // TO 6502 CLOCK
-const int RW_PIN      = 53; // TO 6502 R/W
-const int CLOCK_DELAY = 3;  // HIGH / LOW CLOCK STATE DELAY (You can slow down it as much as you want)
+const int CLOCK_DELAY_PIN = A0;  // Clock delay PIN (potentiometer)
+int CLOCK_DELAY = 5;  // HIGH / LOW CLOCK STATE DELAY (You can slow down it as much as you want)
 
 const char SERIAL_BS = 0x08;
 
+// 6502 to Arduino Pin Mapping
+const int CLOCK_PIN   = 52; // TO 6502 CLOCK
+const int RW_PIN      = 53; // TO 6502 R/W
 const int ADDRESS_PINS[]  = {44,45,2,3,4,5,6,7,8,9,10,11,12,13,46,47}; // TO ADDRESS PIN 1-15 6502
 const int DATA_PINS[]     = {33, 34, 35, 36, 37,38, 39, 40}; // TO DATA BUS PIN 0-7 6502
 
@@ -49,26 +51,33 @@ const unsigned char BS      = 0xDF;  // Backspace key, arrow left key (B7 High)
 const unsigned char CR      = 0x8D;  // Carriage Return (B7 High)
 const unsigned char ESC     = 0x9B;  // ESC key (B7 High)
 
+// 6502 States buffer
 unsigned int  address;    // Current address (from 6502)
 unsigned char bus_data;   // Data Bus value (from 6502)
 int rw_state;             // Current R/W state (from 6502)
 
-unsigned int  pre_address;    // Current address (from 6502)
-unsigned char pre_bus_data;   // Data Bus value (from 6502)
-int pre_rw_state;             // Current R/W state (from 6502)
+// 6502 previous States  buffer
+// We use them to optimize the performance a bit
+unsigned int  pre_address;    // Previous address (from 6502)
+unsigned char pre_bus_data;   // Previous Bus value (from 6502)
+int pre_rw_state;             // Previous R/W state (from 6502)
 
+
+// Set Arduino Address connected PINS as INPUT
 void setupAddressPins() {
   for (int i = 0; i < 16; ++i) {
     pinMode(ADDRESS_PINS[i], INPUT);
   }
 }
 
+// Set Arduino Bus conneced pins mode as IN or OUT
 void setBusMode(int mode) {
   for (int i = 0; i < 8; ++i) {
     pinMode(DATA_PINS[i], mode);
   }
 }
 
+// Read 6502 Address PINS and store the WORD in our address var
 void readAddress() {
   address = 0;
   for (int i = 0; i < 16; ++i)
@@ -78,6 +87,7 @@ void readAddress() {
   }
 }
 
+// Read 6502 Data PINS and store the BYTE in our bus_data var
 void readData() {
   bus_data = 0;
   for (int i = 0; i < 8; ++i)
@@ -87,6 +97,7 @@ void readData() {
   }
 }
 
+// Read RW_PIN state and set the busMode (aruduino related PINS) to OUTPUT or INPUT
 void handleRWState() {
   int tmp_rw_state=digitalRead(RW_PIN);
 
@@ -255,6 +266,14 @@ void loadPROG() {
 void setup() {
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(RW_PIN, INPUT);
+  pinMode(RW_PIN, INPUT);
+
+  // You can remove the PIN input here and just set CLOCK_DELAY as const
+  // Remove also the analogRead on CLOCK_DELAY_PIN in step() below.
+  pinMode(CLOCK_DELAY_PIN, INPUT);
+  CLOCK_DELAY=analogRead(CLOCK_DELAY_PIN);
+  // End of remove
+
 
   setupAddressPins();
   setBusMode(OUTPUT);
@@ -273,6 +292,8 @@ void setup() {
   Serial.print("ERAM: ");
   Serial.print(sizeof(RAM_BANK_2));
   Serial.println(" BYTE");
+  Serial.print("CLOCK DELAY: ");
+  Serial.println(CLOCK_DELAY);
 
   loadBASIC();
   loadPROG();
@@ -294,17 +315,25 @@ void handleClock() {
 }
 
 void handleBusRW() {
-  // READ OR WRITE TO BUS?
+
+  // If nothing changed from the last cycle, we don't need to upadte anything
   if (pre_address != address || pre_rw_state != rw_state) {
+    // READ OR WRITE TO BUS?
     rw_state ? writeToDataBus() : readFromDataBus();
     pre_address = address;
     pre_rw_state = rw_state;
   }
 }
 
-void loop () {
+void step() {
+
+  CLOCK_DELAY=analogRead(CLOCK_DELAY_PIN); // Can be removed, see setup()
   handleClock();
   readAddress();
   handleBusRW();
   handleKeyboard();
+}
+
+void loop () {
+    step();
 }
