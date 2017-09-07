@@ -87,7 +87,9 @@ Inside ASM folder you can find the woz_monitor_masm.asm source listing. This is 
 
 The other sources you find there may be useful to debug the 6502 basic operations as you wire it.
 
-If you are under OSX - you can install MASM via HomeBrew and use it to compile any asm source included the one above.
+If you are under OSX - you can install MASM via HomeBrew and use it to compile any asm source included the one above:
+
+    brew install masm
 
 ## Apple 1 Address Space
           $0000-$0FFF ------------- 4KB Standard RAM
