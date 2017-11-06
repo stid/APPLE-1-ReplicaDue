@@ -105,3 +105,8 @@ If you are under OSX - you can install MASM via HomeBrew and use it to compile a
 - http://archive.computerhistory.org/resources/text/Apple/Apple.AppleI.1976.102646518.pdf (apple 1 official manual)
 - https://en.wikipedia.org/wiki/WDC_65C02
 - http://www.westerndesigncenter.com/wdc/w65c21-chip.cfm
+
+
+## TODO
+    - Hook to real keyboard - frame rate of 60.05 Hz, could support 40 characters per line at 24 lines, with automatic scrolling. 
+    - Hook to real display - 

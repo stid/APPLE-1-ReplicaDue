@@ -1,4 +1,4 @@
-#include "Arduino.h"
+#include <Arduino.h>
 #include "rom.h"
 #include "programs.h"
 
@@ -147,6 +147,7 @@ void byteToDataBus(unsigned char data) {
 void PIAWrite() {
   switch (address) {
 
+    // Keyboard
     case KBD_ADDR:
       KBD=bus_data;
       break;
@@ -155,8 +156,9 @@ void PIAWrite() {
       KBDCR=bus_data;
       break;
 
+    // Display
     case DSP_ADDR:
-      DSP = bus_data;
+      DSP=bus_data;
 
       switch(DSP) {
         case CR:
@@ -219,6 +221,7 @@ unsigned char PIARead() {
     case DSPCR_ADDR:
       val=DSPCR;
       break;
+
     default:
       val=0;
       break;
@@ -231,22 +234,33 @@ void writeToDataBus() {
   unsigned char val=0;
 
   switch (address >> 12) {
+
+    // $0000-$0FFF 4KB Standard RAM
     case 0x0:
       val=RAM_BANK_1[address-RAM_BANK1_ADDR];
       break;
+
+    // $E000-$EFFF 4KB Extended RAM
     case 0xE:
       val=RAM_BANK_2[address-RAM_BANK2_ADDR];
       break;
+
+    // $FF00-$FFFF 256 Bytes ROM
     case 0xF:
       val=ROM[address-ROM_ADDR];
       break;
+
+    // $D010-$D013 PIA (6821) [KBD & DSP]
     case 0xD:
       val=PIARead();
       break;
+
+    // Segmentation Fault. Just return 0
     default:
       val=0;
       break;
   }
+
   byteToDataBus(val);
 }
 
@@ -345,8 +359,7 @@ void handleClock() {
 }
 
 void handleBusRW() {
-
-  // If nothing changed from the last cycle, we don't need to upadte anything
+  // If nothing changed from the last cycle, we don't need to update anything
   if (pre_address != address || pre_rw_state != rw_state) {
     // READ OR WRITE TO BUS?
     rw_state ? writeToDataBus() : readFromDataBus();
@@ -356,7 +369,6 @@ void handleBusRW() {
 }
 
 void step() {
-
   CLOCK_DELAY=analogRead(CLOCK_DELAY_PIN); // Can be removed, see setup()
   handleClock();
   readAddress();
